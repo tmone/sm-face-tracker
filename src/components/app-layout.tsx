@@ -8,9 +8,10 @@ import {
   LogOut,
   Settings,
   Briefcase,
+  ShieldCheck, // Icon for Admin
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
 import {
@@ -27,11 +28,51 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/context/auth-context'; // Import useAuth hook
+import { signOutUser } from '@/lib/auth'; // Import sign out function
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, userData, loading, isAdmin } = useAuth(); // Use the auth context
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+      toast({
+        title: 'Logged Out',
+        description: 'You have been successfully logged out.',
+      });
+      router.push('/login'); // Redirect to login page after logout
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({
+        title: 'Logout Failed',
+        description: 'An error occurred during logout. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
 
   const isActive = (path: string) => pathname === path;
+
+  // If loading or no user, potentially show loading or redirect, handled by pages typically
+  // This layout assumes a user is logged in, protection happens at page level
+  // if (loading) return <div>Loading...</div>; // Or a skeleton loader
+  // if (!user && !loading) {
+  //   // Redirect handled in pages, but could be done here too
+  //   // router.push('/login');
+  //   return null; // Avoid rendering layout if not authenticated
+  // }
+
+  const getInitials = (email: string | undefined | null): string => {
+    if (!email) return 'U';
+    return email.substring(0, 2).toUpperCase();
+  };
+
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -46,6 +87,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent className="flex-1 overflow-auto p-2">
           <SidebarMenu>
+             {/* Common Links for all users */}
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -82,35 +124,40 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive('/admin')}
-                tooltip="Admin"
-              >
-                <Link href="/admin">
-                  <Settings />
-                  <span>Admin Panel</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+
+            {/* Admin Only Links */}
+            {isAdmin && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive('/admin')}
+                  tooltip="Admin"
+                >
+                  <Link href="/admin">
+                    <ShieldCheck /> {/* Using a more admin-like icon */}
+                    <span>Admin Panel</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-2">
           <div className="flex items-center gap-3 p-2 border-t border-sidebar-border">
             <Avatar className="h-9 w-9">
-              <AvatarImage src="https://picsum.photos/40/40" alt="User Avatar" />
-              <AvatarFallback>AD</AvatarFallback>
+              {/* Use placeholder or fetched image */}
+              {/* <AvatarImage src={userData?.photoURL || "https://picsum.photos/40/40"} alt="User Avatar" /> */}
+              <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="text-sm font-medium text-sidebar-foreground">
-                Admin User
+              <span className="text-sm font-medium text-sidebar-foreground truncate max-w-[120px]">
+                {userData?.displayName || user?.email || 'User'}
               </span>
               <span className="text-xs text-sidebar-foreground/70">
-                admin@facechecker.com
+                 {userData?.role === 'admin' ? 'Administrator' : 'User'}
               </span>
             </div>
-            <Button variant="ghost" size="icon" className="ml-auto text-sidebar-foreground/70 hover:text-sidebar-foreground">
+            <Button variant="ghost" size="icon" className="ml-auto text-sidebar-foreground/70 hover:text-sidebar-foreground" onClick={handleLogout} title="Log Out">
               <LogOut className="h-5 w-5" />
             </Button>
           </div>

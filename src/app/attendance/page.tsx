@@ -7,29 +7,47 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Camera, UserCheck, UserX, Clock, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ProtectedRoute } from '@/components/protected-route'; // Import ProtectedRoute
+import { useAuth } from '@/context/auth-context'; // Import useAuth
 
 export default function AttendancePage() {
   const [isChecking, setIsChecking] = React.useState(false);
   const [result, setResult] = React.useState<'success' | 'fail' | 'checking' | null>(null);
-  const [employeeName, setEmployeeName] = React.useState<string | null>(null);
+  const [employeeName, setEmployeeName] = React.useState<string | null>(null); // Or fetch from user context
   const [checkTime, setCheckTime] = React.useState<string | null>(null);
   const { toast } = useToast();
+  const { user, userData } = useAuth(); // Get user info
 
   const handleCheckAttendance = async () => {
+     if (!user) {
+      toast({ title: "Error", description: "Authentication error.", variant: "destructive" });
+      return;
+    }
     setIsChecking(true);
     setResult('checking');
     setEmployeeName(null);
     setCheckTime(null);
     console.log('Checking attendance...');
 
-    // Placeholder for face detection and liveness check logic
-    // Simulate API call and result
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    // Placeholder for face detection, liveness check, and recognition logic
+    // This would involve:
+    // 1. Capturing an image/frame from the camera feed.
+    // 2. Sending this image to a backend function/API.
+    // 3. The backend performs:
+    //    a. Liveness check (to prevent spoofing with photos).
+    //    b. Face detection and feature extraction.
+    //    c. Comparison against stored facial embeddings (e.g., in Firestore/Vector DB).
+    //    d. If a match is found above a certain threshold, identify the user (retrieve user.uid).
+    //    e. Record the attendance log in Firestore (e.g., collection 'attendance_logs') with userId, timestamp, status ('checked-in').
+    // 4. Return the result (success/fail, username if success) to the frontend.
+
+    await new Promise(resolve => setTimeout(resolve, 2500)); // Simulate API call
 
     const success = Math.random() > 0.3; // Simulate success/failure
 
     if (success) {
-      const name = "Jane Doe"; // Placeholder name
+      // On successful recognition, use the logged-in user's data
+      const name = userData?.displayName || user.email || 'User'; // Use display name or email
       const time = new Date().toLocaleTimeString();
       setResult('success');
       setEmployeeName(name);
@@ -38,11 +56,12 @@ export default function AttendancePage() {
         title: "Attendance Checked In",
         description: `${name} checked in at ${time}.`,
       });
+       // TODO: Record attendance in Firestore (ideally done server-side)
     } else {
       setResult('fail');
        toast({
         title: "Attendance Check Failed",
-        description: "Could not recognize face or liveness check failed. Please try again or enter ID manually.",
+        description: "Could not recognize face or liveness check failed. Please try again.",
         variant: "destructive",
       });
     }
@@ -69,7 +88,6 @@ export default function AttendancePage() {
             <AlertTitle>Check-in Failed</AlertTitle>
             <AlertDescription>
               Face not recognized or liveness check failed. Please ensure good lighting and try again.
-              You can also try entering your ID manually if issues persist.
             </AlertDescription>
           </Alert>
         );
@@ -98,48 +116,45 @@ export default function AttendancePage() {
 
 
   return (
-    <AppLayout>
-      <div className="grid gap-6">
-        <h1 className="text-2xl font-semibold">Attendance Check</h1>
-         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-           <Card>
-             <CardHeader>
-               <CardTitle>Live Camera Feed</CardTitle>
-               <CardDescription>Position your face clearly in the frame.</CardDescription>
-             </CardHeader>
-             <CardContent>
-               {/* Placeholder for actual camera feed */}
-               <div className="aspect-video bg-muted rounded-md flex items-center justify-center text-muted-foreground">
-                 <Camera className="h-16 w-16" />
-                 <p className="mt-2">Camera feed for attendance</p>
-               </div>
-               <Button
-                 onClick={handleCheckAttendance}
-                 disabled={isChecking}
-                 className="w-full mt-4"
-               >
-                 {isChecking ? <><Clock className="mr-2 h-4 w-4 animate-spin" /> Checking...</> : 'Check Attendance'}
-               </Button>
-             </CardContent>
-           </Card>
-           <Card>
-             <CardHeader>
-               <CardTitle>Attendance Status</CardTitle>
-               <CardDescription>Real-time results of the attendance check.</CardDescription>
-             </CardHeader>
-             <CardContent>
-                {renderResult()}
-                 {/* Option for manual ID entry */}
-                 {result === 'fail' && (
-                    <div className="mt-4 text-center">
-                        <p className="text-sm text-muted-foreground mb-2">Having trouble?</p>
-                        <Button variant="outline" size="sm">Enter ID Manually</Button>
-                    </div>
-                 )}
-             </CardContent>
-           </Card>
-         </div>
-      </div>
-    </AppLayout>
+     <ProtectedRoute> {/* Ensure user is logged in */}
+      <AppLayout>
+        <div className="grid gap-6">
+          <h1 className="text-2xl font-semibold">Attendance Check</h1>
+          <CardDescription>Verify your identity using the camera to mark your attendance.</CardDescription>
+           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+             <Card>
+               <CardHeader>
+                 <CardTitle>Live Camera Feed</CardTitle>
+                 <CardDescription>Position your face clearly in the frame.</CardDescription>
+               </CardHeader>
+               <CardContent>
+                 {/* TODO: Implement actual camera feed */}
+                 <div className="aspect-video bg-muted rounded-md flex items-center justify-center text-muted-foreground">
+                   <Camera className="h-16 w-16" />
+                   <p className="mt-2">Camera feed for attendance</p>
+                 </div>
+                 <Button
+                   onClick={handleCheckAttendance}
+                   disabled={isChecking}
+                   className="w-full mt-4"
+                 >
+                   {isChecking ? <><Clock className="mr-2 h-4 w-4 animate-spin" /> Checking...</> : 'Check Attendance'}
+                 </Button>
+               </CardContent>
+             </Card>
+             <Card>
+               <CardHeader>
+                 <CardTitle>Attendance Status</CardTitle>
+                 <CardDescription>Real-time results of the attendance check.</CardDescription>
+               </CardHeader>
+               <CardContent>
+                  {renderResult()}
+                   {/* Manual ID entry removed as check-in is tied to logged-in user */}
+               </CardContent>
+             </Card>
+           </div>
+        </div>
+      </AppLayout>
+    </ProtectedRoute>
   );
 }
