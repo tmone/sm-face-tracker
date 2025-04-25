@@ -1,9 +1,11 @@
 'use client';
 
 import * as React from 'react';
+import { useState } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Camera, Info, CheckCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +14,10 @@ import { ProtectedRoute } from '@/components/protected-route'; // Import Protect
 import { useAuth } from '@/context/auth-context'; // Import useAuth
 
 export default function RegisterPage() {
+  const [fullName, setFullName] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
+  const [department, setDepartment] = useState('');
+
   const [instructions, setInstructions] = React.useState<string>('');
   const [isLoadingInstructions, setIsLoadingInstructions] = React.useState<boolean>(true);
   const [errorInstructions, setErrorInstructions] = React.useState<string | null>(null);
@@ -43,12 +49,23 @@ export default function RegisterPage() {
 
 
   const handleStartRegistration = async () => {
-     if (!user) {
-       toast({ title: "Error", description: "You must be logged in to register.", variant: "destructive" });
-       return;
-     }
+    if (!user) {
+      toast({ title: "Error", description: "You must be logged in to register.", variant: "destructive" });
+      return;
+    }
+
+    if (!fullName || !employeeId || !department) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all the required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsRegistering(true);
     // Placeholder for face capture & registration logic
+
     // This logic would typically involve:
     // 1. Accessing the camera feed (useEffect hook needed)
     // 2. Capturing multiple images/video frames based on instructions
@@ -68,8 +85,36 @@ export default function RegisterPage() {
        // Potentially update status based on actual backend response
     });
     // Update UI to show registration steps/progress if applicable
-  };
+ };
 
+ const departments = [
+  { value: "SM", label: "StepMedia (SM)" },
+  { value: "MS", label: "MediaStep (MS)" },
+];
+
+  const DepartmentSelect = () => (
+    <select
+      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      value={department}
+      onChange={(e) => setDepartment(e.target.value)}
+      required
+    >
+      <option value="" disabled>
+        Select Department
+      </option>
+      {departments.map((dept) => (
+        <option key={dept.value} value={dept.value}>
+          {dept.label}
+        </option>
+      ))}
+    </select>
+  );
+
+  const isFormValid = fullName && employeeId && department;
+
+
+
+ 
   return (
      <ProtectedRoute> {/* Ensure user is logged in */}
       <AppLayout>
@@ -77,6 +122,34 @@ export default function RegisterPage() {
           <h1 className="text-2xl font-semibold">Register Your Face</h1>
           <CardDescription>Register your face for attendance verification. This only needs to be done once.</CardDescription>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Information</CardTitle>
+                <CardDescription>Please fill in your information.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
+                    Họ tên
+                  </label>
+                  <Input type="text" id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required placeholder="Enter your full name" />
+                </div>
+                <div>
+                  <label htmlFor="employeeId" className="block text-sm font-medium text-gray-700">
+                    Mã nhân viên
+                  </label>
+                  <Input type="text" id="employeeId" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required placeholder="Enter your employee ID" />
+                </div>
+                <div>
+                  <label htmlFor="department" className="block text-sm font-medium text-gray-700">
+                    Phòng ban
+                  </label>
+                  <DepartmentSelect />
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Camera Feed</CardTitle>
@@ -124,7 +197,7 @@ export default function RegisterPage() {
                  {/* Removed Employee ID/Name fields - registration is tied to the logged-in user */}
               </CardContent>
                <CardFooter className="flex justify-end">
-                   <Button onClick={handleStartRegistration} disabled={isRegistering || isLoadingInstructions || !!errorInstructions}>
+                   <Button onClick={handleStartRegistration} disabled={isRegistering || isLoadingInstructions || !!errorInstructions || !isFormValid }>
                      {isRegistering ? 'Processing...' : 'Start Registration'}
                    </Button>
                </CardFooter>
